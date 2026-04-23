@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Messages{% endblock %}
+{% block page_title %}My Messages{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Send Message -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-send me-2"></i>Send Message
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-600">To (Faculty)</label>
+            <select name="receiver_id" class="form-select" required>
+              <option value="">Select Faculty</option>
+              {% for f in faculty %}
+              <option value="{{ f.id }}">
+                {{ f.username }} — {{ f.designation }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Subject</label>
+            <input type="text" name="subject"
+                   class="form-control" required
+                   placeholder="Message subject"/>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Message</label>
+            <textarea name="body" class="form-control"
+                      rows="4" required
+                      placeholder="Type your message...">
+            </textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-send me-1"></i>Send Message
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Inbox & Sent -->
+  <div class="col-md-8">
+    <!-- Inbox -->
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="bi bi-inbox me-2"></i>Inbox
+        {% set unread = inbox|selectattr("is_read","eq",0)|list %}
+        {% if unread %}
+        <span class="badge bg-danger ms-1">
+          {{ unread|length }} new
+        </span>
+        {% endif %}
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">From</th>
+              <th>Subject</th>
+              <th>Message</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in inbox %}
+            <tr style="{% if not m.is_read %}
+                         background:#f0f4ff;font-weight:600;
+                       {% endif %}">
+              <td style="padding:10px 16px;font-size:13px;">
+                {{ m.sender_name }}
+                {% if not m.is_read %}
+                <span class="badge bg-danger ms-1"
+                      style="font-size:9px;">NEW</span>
+                {% endif %}
+              </td>
+              <td style="font-size:13px;">
+                {{ m.subject or "No subject" }}
+              </td>
+              <td style="font-size:12px;color:#666;">
+                {{ m.body[:60] }}...
+              </td>
+              <td style="font-size:11px;color:#999;">
+                {{ m.created_at.strftime('%d %b %H:%M')
+                   if m.created_at else "-" }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                No messages in inbox
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Sent -->
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-send me-2"></i>Sent Messages
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">To</th>
+              <th>Subject</th>
+              <th>Message</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in sent %}
+            <tr>
+              <td style="padding:10px 16px;font-size:13px;
+                         font-weight:600;">
+                {{ m.receiver_name }}
+              </td>
+              <td style="font-size:13px;">
+                {{ m.subject or "No subject" }}
+              </td>
+              <td style="font-size:12px;color:#666;">
+                {{ m.body[:60] }}...
+              </td>
+              <td style="font-size:11px;color:#999;">
+                {{ m.created_at.strftime('%d %b %H:%M')
+                   if m.created_at else "-" }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-3 text-muted">
+                No sent messages
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

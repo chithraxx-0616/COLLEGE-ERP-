@@ -299,7 +299,7 @@ def faculty_dashboard():
 @app.route("/student")
 @login_required
 @role_required("student", "admin")
-def student_dashboard():
+def student_dashboard_extra():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
@@ -1485,6 +1485,320 @@ def hod_leave_action(lid, action):
               f"Leave request id={lid} {action}")
     flash(f"Leave {action} successfully!", "success")
     return redirect(url_for("hod_leaves"))
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — HELPER: GET STUDENT PROFILE
+# ══════════════════════════════════════════════════════════════════
+
+def get_student_profile():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT * FROM students WHERE user_id = %s",
+        (session["user_id"],)
+    )
+    student = cursor.fetchone()
+    db.close()
+    return student
+
+
+@app.route("/student/dashboard")
+@login_required
+@role_required("student", "admin")
+def student_dashboard():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found. Contact admin.", "danger")
+        return redirect(url_for("login"))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    # Attendance
+    cursor.execute(
+        "SELECT COUNT(*) as total, SUM(status='present') as present "
+        "FROM attendance WHERE student_id=%s",
+        (student["id"],)
+    )
+    att = cursor.fetchone()
+    att_pct = round((att["present"] / att["total"]) * 100) if att["total"] else 0
+
+    # Fee due
+    cursor.execute(
+        "SELECT COALESCE(SUM(amount - paid), 0) as due "
+        "FROM fees WHERE student_id=%s",
+        (student["id"],)
+    )
+    fee_due = cursor.fetchone()["due"] or 0
+
+    # Open queries
+    cursor.execute(
+        "SELECT COUNT(*) as cnt FROM queries "
+        "WHERE student_id=%s AND status='open'",
+        (student["id"],)
+    )
+    open_queries = cursor.fetchone()["cnt"]
+
+    # Unread messages
+    cursor.execute(
+        "SELECT COUNT(*) as cnt FROM messages "
+        "WHERE receiver_id=%s AND is_read=0",
+        (session["user_id"],)
+    )
+    unread = cursor.fetchone()["cnt"]
+
+    db.close()
+
+    return render_template("student/dashboard.html",
+        student=student,
+        att_pct=att_pct,
+        fee_due=fee_due,
+        open_queries=open_queries,
+        unread=unread
+    )
+
+
+
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — MARKS
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student/marks")
+@login_required
+@role_required("student", "admin")
+def student_marks():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found.", "danger")
+        return redirect(url_for("student_dashboard"))
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT m.*, c.name as course_name, c.code "
+        "FROM marks m JOIN courses c ON m.course_id=c.id "
+        "WHERE m.student_id=%s ORDER BY c.name, m.exam_type",
+        (student["id"],)
+    )
+    marks = cursor.fetchall()
+
+    summary = {}
+    for m in marks:
+        cname = m["course_name"]
+        if cname not in summary:
+            summary[cname] = {
+                "code": m["code"],
+                "exams": [],
+                "total": 0,
+                "max": 0
+            }
+        summary[cname]["exams"].append(m)
+        summary[cname]["total"] += float(m["marks_obtained"])
+        summary[cname]["max"]   += float(m["max_marks"])
+
+    db.close()
+    return render_template("student/marks.html",
+        student=student, marks=marks, summary=summary
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — ATTENDANCE
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student/attendance")
+@login_required
+@role_required("student", "admin")
+def student_attendance():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found.", "danger")
+        return redirect(url_for("student_dashboard"))
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT a.*, c.name as course_name, c.code "
+        "FROM attendance a JOIN courses c ON a.course_id=c.id "
+        "WHERE a.student_id=%s ORDER BY c.name, a.date DESC",
+        (student["id"],)
+    )
+    records = cursor.fetchall()
+
+    course_stats = {}
+    for r in records:
+        cname = r["course_name"]
+        if cname not in course_stats:
+            course_stats[cname] = {
+                "code":    r["code"],
+                "total":   0,
+                "present": 0
+            }
+        course_stats[cname]["total"] += 1
+        if r["status"] == "present":
+            course_stats[cname]["present"] += 1
+
+    for cname in course_stats:
+        t = course_stats[cname]["total"]
+        p = course_stats[cname]["present"]
+        course_stats[cname]["percentage"] = (
+            round((p / t) * 100) if t > 0 else 0
+        )
+
+    db.close()
+    return render_template("student/attendance.html",
+        student=student,
+        records=records,
+        course_stats=course_stats
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — FEES
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student/fees")
+@login_required
+@role_required("student", "admin")
+def student_fees():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found.", "danger")
+        return redirect(url_for("student_dashboard"))
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT * FROM fees WHERE student_id=%s ORDER BY semester",
+        (student["id"],)
+    )
+    fees = cursor.fetchall()
+
+    total_amount = sum(float(f["amount"]) for f in fees)
+    total_paid   = sum(float(f["paid"])   for f in fees)
+    total_due    = total_amount - total_paid
+
+    db.close()
+    return render_template("student/fees.html",
+        student=student,
+        fees=fees,
+        total_amount=total_amount,
+        total_paid=total_paid,
+        total_due=total_due
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — QUERIES
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student/queries", methods=["GET", "POST"])
+@login_required
+@role_required("student", "admin")
+def student_queries():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found.", "danger")
+        return redirect(url_for("student_dashboard"))
+
+    if request.method == "POST":
+        subject = request.form.get("subject").strip()
+        body    = request.form.get("body").strip()
+        try:
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute(
+                "INSERT INTO queries (student_id, subject, body) "
+                "VALUES (%s,%s,%s)",
+                (student["id"], subject, body)
+            )
+            db.commit()
+            db.close()
+            log_audit(session["user_id"], "QUERY_RAISED",
+                      f"Query: {subject}")
+            flash("Query submitted successfully!", "success")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT * FROM queries WHERE student_id=%s "
+        "ORDER BY created_at DESC",
+        (student["id"],)
+    )
+    queries = cursor.fetchall()
+    db.close()
+    return render_template("student/queries.html",
+        student=student, queries=queries
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — MESSAGES
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student/messages", methods=["GET", "POST"])
+@login_required
+@role_required("student", "admin")
+def student_messages():
+    student = get_student_profile()
+    if not student:
+        flash("Student profile not found.", "danger")
+        return redirect(url_for("student_dashboard"))
+
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    if request.method == "POST":
+        receiver_id = request.form.get("receiver_id")
+        subject     = request.form.get("subject")
+        body        = request.form.get("body")
+        try:
+            cursor.execute(
+                "INSERT INTO messages "
+                "(sender_id, receiver_id, subject, body) "
+                "VALUES (%s,%s,%s,%s)",
+                (session["user_id"], receiver_id, subject, body)
+            )
+            db.commit()
+            log_audit(session["user_id"], "MESSAGE_SENT",
+                      f"Student sent message to user={receiver_id}")
+            flash("Message sent!", "success")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    cursor.execute(
+        "SELECT m.*, u.username as sender_name "
+        "FROM messages m JOIN users u ON m.sender_id=u.id "
+        "WHERE m.receiver_id=%s ORDER BY m.created_at DESC",
+        (session["user_id"],)
+    )
+    inbox = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT m.*, u.username as receiver_name "
+        "FROM messages m JOIN users u ON m.receiver_id=u.id "
+        "WHERE m.sender_id=%s ORDER BY m.created_at DESC",
+        (session["user_id"],)
+    )
+    sent = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT u.id, u.username, f.designation "
+        "FROM users u JOIN faculty f ON u.id=f.user_id "
+        "WHERE f.department=%s ORDER BY f.designation",
+        (student["department"],)
+    )
+    faculty = cursor.fetchall()
+
+    cursor.execute(
+        "UPDATE messages SET is_read=1 WHERE receiver_id=%s",
+        (session["user_id"],)
+    )
+    db.commit()
+    db.close()
+
+    return render_template("student/messages.html",
+        inbox=inbox, sent=sent, faculty=faculty,
+        student=student
+    )
 
 # ── Run ────────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
