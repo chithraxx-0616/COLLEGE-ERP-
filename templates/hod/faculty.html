@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Department Faculty{% endblock %}
+{% block page_title %}{{ dept }} — Faculty{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span>
+      <i class="bi bi-person-badge me-2"></i>
+      {{ dept }} Department Faculty
+    </span>
+    <span class="badge bg-primary">{{ faculty|length }} members</span>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th style="padding:12px 16px;">Name</th>
+          <th>Designation</th>
+          <th>Email</th>
+          <th>Username</th>
+          <th>Courses</th>
+          <th>Pending Leaves</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faculty %}
+        <tr>
+          <td style="padding:10px 16px;font-weight:600;font-size:13px;">
+            {{ f.full_name }}
+          </td>
+          <td style="font-size:13px;">{{ f.designation }}</td>
+          <td style="font-size:12px;color:#666;">{{ f.email }}</td>
+          <td style="font-size:12px;">{{ f.username }}</td>
+          <td>
+            <span class="badge bg-primary">
+              {{ f.course_count }} courses
+            </span>
+          </td>
+          <td>
+            {% if f.pending_leaves > 0 %}
+              <span class="badge bg-warning text-dark">
+                {{ f.pending_leaves }} pending
+              </span>
+            {% else %}
+              <span class="badge bg-success">None</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">
+            No faculty in this department
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

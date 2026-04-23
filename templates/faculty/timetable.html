@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Timetable{% endblock %}
+{% block page_title %}My Timetable{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Set Timetable -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-calendar-plus me-2"></i>Set Timetable
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-600">Day</label>
+            <select name="day" class="form-select" required>
+              {% for d in days %}
+              <option value="{{ d }}">{{ d }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Period</label>
+            <select name="period" class="form-select" required>
+              {% for i in range(1, 9) %}
+              <option value="{{ i }}">Period {{ i }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Course</label>
+            <select name="course_id" class="form-select" required>
+              <option value="">Select Course</option>
+              {% for c in courses %}
+              <option value="{{ c.id }}">
+                {{ c.code }} — {{ c.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-600">Start Time</label>
+              <input type="time" name="start_time"
+                     class="form-control" required/>
+            </div>
+            <div class="col">
+              <label class="form-label fw-600">End Time</label>
+              <input type="time" name="end_time"
+                     class="form-control" required/>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-save me-1"></i>Save Slot
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Timetable View -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-calendar3 me-2"></i>Weekly Timetable
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-bordered mb-0">
+          <thead style="background:#1a237e;color:#fff;">
+            <tr>
+              <th style="padding:10px 16px;">Day</th>
+              <th>Period</th>
+              <th>Course</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in timetable %}
+            <tr>
+              <td style="padding:10px 16px;font-weight:600;
+                         font-size:13px;">
+                {{ t.day }}
+              </td>
+              <td style="font-size:13px;">
+                Period {{ t.period }}
+              </td>
+              <td>
+                <span class="badge bg-primary">{{ t.code }}</span>
+                <span style="font-size:13px;margin-left:6px;">
+                  {{ t.course_name }}
+                </span>
+              </td>
+              <td style="font-size:12px;color:#666;">
+                {{ t.start_time }} — {{ t.end_time }}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                No timetable set yet
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

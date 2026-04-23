@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Department Timetable{% endblock %}
+{% block page_title %}{{ dept }} — Timetable{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-calendar3 me-2"></i>
+    {{ dept }} Weekly Timetable
+  </div>
+  <div class="card-body p-0" style="overflow-x:auto;">
+    <table class="table table-bordered mb-0">
+      <thead style="background:#1a237e;color:#fff;">
+        <tr>
+          <th style="padding:12px 16px;min-width:100px;">Day</th>
+          {% for p in periods %}
+          <th style="min-width:120px;text-align:center;">
+            Period {{ p }}
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for day in days %}
+        <tr>
+          <td style="padding:10px 16px;font-weight:700;
+                     background:#f8f9fa;">
+            {{ day }}
+          </td>
+          {% for p in periods %}
+          {% set slot = timetable|selectattr("day","eq",day)
+                                 |selectattr("period","eq",p)
+                                 |list %}
+          <td style="text-align:center;vertical-align:middle;
+                     padding:8px;">
+            {% if slot %}
+              <div style="background:#e8eaf6;border-radius:6px;
+                          padding:6px 4px;">
+                <div style="font-size:11px;font-weight:700;
+                            color:#1a237e;">
+                  {{ slot[0].code }}
+                </div>
+                <div style="font-size:10px;color:#555;">
+                  {{ slot[0].course_name[:15] }}
+                </div>
+                <div style="font-size:10px;color:#888;">
+                  {{ slot[0].faculty_name.split()[0] if
+                     slot[0].faculty_name else "" }}
+                </div>
+              </div>
+            {% else %}
+              <span style="color:#ddd;font-size:12px;">—</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

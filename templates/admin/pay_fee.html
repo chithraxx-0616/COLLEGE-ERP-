@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Record Payment{% endblock %}
+{% block page_title %}Record Payment{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-5">
+    <div class="card mb-3">
+      <div class="card-header">
+        <i class="bi bi-info-circle me-2"></i>Fee Details
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span style="color:#666;font-size:13px;">Student</span>
+          <strong>{{ fee.full_name }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span style="color:#666;font-size:13px;">Total Amount</span>
+          <strong>₹{{ fee.amount }}</strong>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span style="color:#666;font-size:13px;">Already Paid</span>
+          <strong style="color:green;">₹{{ fee.paid }}</strong>
+        </div>
+        <div class="d-flex justify-content-between">
+          <span style="color:#666;font-size:13px;">Balance</span>
+          <strong style="color:red;">
+            ₹{{ fee.amount - fee.paid }}
+          </strong>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-cash me-2"></i>Record Payment
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-600">Payment Amount (₹)</label>
+            <input type="number" name="amount"
+                   class="form-control" required
+                   placeholder="Enter amount paid"
+                   max="{{ fee.amount - fee.paid }}"/>
+          </div>
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-cash me-1"></i>Record Payment
+            </button>
+            <a href="/admin/fees" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

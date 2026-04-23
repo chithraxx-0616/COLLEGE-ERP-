@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}College ERP{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
+
+    .sidebar {
+      min-height: 100vh;
+      width: 240px;
+      background: linear-gradient(180deg, #1a237e 0%, #283593 100%);
+      position: fixed;
+      top: 0; left: 0;
+      padding: 0;
+      z-index: 100;
+    }
+
+    .sidebar-brand {
+      padding: 20px 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-brand h5 {
+      color: #fff;
+      font-weight: 700;
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .sidebar-brand small {
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+    }
+
+    .sidebar .nav-link {
+      color: rgba(255,255,255,0.75);
+      padding: 10px 20px;
+      font-size: 14px;
+      border-left: 3px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .sidebar .nav-link:hover,
+    .sidebar .nav-link.active {
+      color: #fff;
+      background: rgba(255,255,255,0.1);
+      border-left-color: #64b5f6;
+    }
+
+    .sidebar .nav-link i {
+      width: 20px;
+      margin-right: 8px;
+    }
+
+    .sidebar-section {
+      padding: 12px 20px 4px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .main-content {
+      margin-left: 240px;
+      padding: 24px;
+    }
+
+    .topbar {
+      background: #fff;
+      padding: 12px 24px;
+      margin: -24px -24px 24px -24px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .topbar h6 { margin: 0; font-weight: 600; color: #1a237e; }
+
+    .stat-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      border: none;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      transition: transform 0.2s;
+    }
+
+    .stat-card:hover { transform: translateY(-2px); }
+
+    .stat-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .card-header {
+      background: #fff;
+      border-bottom: 1px solid #f0f0f0;
+      font-weight: 600;
+      padding: 14px 20px;
+      border-radius: 12px 12px 0 0 !important;
+    }
+
+    .table th {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      font-weight: 600;
+      border-top: none;
+    }
+
+    .badge-role {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .role-admin    { background: #e8eaf6; color: #3949ab; }
+    .role-principal{ background: #e3f2fd; color: #1565c0; }
+    .role-hod      { background: #e0f2f1; color: #00695c; }
+    .role-faculty  { background: #fff8e1; color: #f57f17; }
+    .role-student  { background: #f3e5f5; color: #6a1b9a; }
+
+    .user-info {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .avatar {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 14px; color: #fff;
+      background: #3949ab;
+    }
+
+    .alert { border-radius: 8px; border: none; font-size: 14px; }
+
+    .btn-primary {
+      background: #1a237e;
+      border-color: #1a237e;
+    }
+
+    .btn-primary:hover {
+      background: #283593;
+      border-color: #283593;
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+{% if session.user_id %}
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <h5><i class="bi bi-shield-lock-fill me-2"></i>College ERP</h5>
+    <small>Secure Management System</small>
+  </div>
+
+  <nav class="mt-2">
+    {% if session.role == "admin" %}
+      <div class="sidebar-section">Main</div>
+      <a href="/admin" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+      <div class="sidebar-section">Manage</div>
+      <a href="/admin/students" class="nav-link"><i class="bi bi-people"></i>Students</a>
+      <a href="/admin/faculty" class="nav-link"><i class="bi bi-person-badge"></i>Faculty</a>
+      <a href="/admin/courses" class="nav-link"><i class="bi bi-book"></i>Courses</a>
+      <a href="/admin/fees" class="nav-link"><i class="bi bi-cash-stack"></i>Fees</a>
+      <div class="sidebar-section">Security</div>
+      <a href="/admin/audit" class="nav-link"><i class="bi bi-journal-text"></i>Audit Log</a>
+      <a href="/admin/users" class="nav-link"><i class="bi bi-person-lock"></i>Users</a>
+
+    {% elif session.role == "principal" %}
+      <div class="sidebar-section">Overview</div>
+      <a href="/principal" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+      <a href="/principal/students" class="nav-link"><i class="bi bi-people"></i>All Students</a>
+      <a href="/principal/faculty" class="nav-link"><i class="bi bi-person-badge"></i>All Faculty</a>
+      <a href="/principal/leaves" class="nav-link"><i class="bi bi-calendar-x"></i>Leave Status</a>
+
+    {% elif session.role == "hod" %}
+      <div class="sidebar-section">Department</div>
+      <a href="/hod" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+      <a href="/hod/faculty" class="nav-link"><i class="bi bi-person-badge"></i>My Faculty</a>
+      <a href="/hod/students" class="nav-link"><i class="bi bi-people"></i>My Students</a>
+      <a href="/hod/timetable" class="nav-link"><i class="bi bi-calendar3"></i>Timetable</a>
+      <a href="/hod/events" class="nav-link"><i class="bi bi-calendar-event"></i>Events</a>
+      <a href="/hod/messages" class="nav-link"><i class="bi bi-chat-dots"></i>Messages</a>
+      <a href="/hod/leaves" class="nav-link"><i class="bi bi-calendar-check"></i>Leave Approval</a>
+
+    {% elif session.role == "faculty" %}
+      <div class="sidebar-section">Teaching</div>
+      <a href="/faculty" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+      <a href="/faculty/marks" class="nav-link"><i class="bi bi-clipboard-data"></i>Enter Marks</a>
+      <a href="/faculty/attendance" class="nav-link"><i class="bi bi-check2-square"></i>Attendance</a>
+      <a href="/faculty/timetable" class="nav-link"><i class="bi bi-calendar3"></i>Timetable</a>
+      <a href="/faculty/leave" class="nav-link"><i class="bi bi-calendar-x"></i>Apply Leave</a>
+      <a href="/faculty/messages" class="nav-link"><i class="bi bi-chat-dots"></i>Messages</a>
+
+    {% elif session.role == "student" %}
+      <div class="sidebar-section">My Info</div>
+      <a href="/student" class="nav-link"><i class="bi bi-speedometer2"></i>Dashboard</a>
+      <a href="/student/marks" class="nav-link"><i class="bi bi-bar-chart"></i>My Marks</a>
+      <a href="/student/attendance" class="nav-link"><i class="bi bi-check2-square"></i>Attendance</a>
+      <a href="/student/fees" class="nav-link"><i class="bi bi-cash"></i>Fee Status</a>
+      <a href="/student/queries" class="nav-link"><i class="bi bi-question-circle"></i>Raise Query</a>
+      <a href="/student/messages" class="nav-link"><i class="bi bi-chat-dots"></i>Messages</a>
+    {% endif %}
+
+    <div class="sidebar-section">Account</div>
+    <a href="/logout" class="nav-link text-danger"><i class="bi bi-box-arrow-left"></i>Logout</a>
+  </nav>
+</div>
+
+<!-- Main Content -->
+<div class="main-content">
+  <div class="topbar">
+    <h6>{% block page_title %}Dashboard{% endblock %}</h6>
+    <div class="user-info">
+      <div class="avatar">{{ session.username[0].upper() }}</div>
+      <div>
+        <div style="font-size:13px;font-weight:600;">{{ session.username }}</div>
+        <div style="font-size:11px;color:#666;">
+          <span class="badge-role role-{{ session.role }}">{{ session.role.upper() }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  {% block content %}{% endblock %}
+</div>
+
+{% else %}
+  {% block content_noauth %}{% endblock %}
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

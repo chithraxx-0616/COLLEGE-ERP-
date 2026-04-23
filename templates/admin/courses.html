@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Manage Courses{% endblock %}
+{% block page_title %}Manage Courses{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-book me-2"></i>All Courses</span>
+    <a href="/admin/courses/add" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-circle me-1"></i>Add Course
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th style="padding:12px 16px;">Code</th>
+          <th>Course Name</th>
+          <th>Department</th>
+          <th>Credits</th>
+          <th>Faculty</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for c in courses %}
+        <tr>
+          <td style="padding:10px 16px;">
+            <span class="badge bg-primary">{{ c.code }}</span>
+          </td>
+          <td style="font-weight:600;font-size:13px;">{{ c.name }}</td>
+          <td>
+            <span class="badge bg-success">{{ c.department }}</span>
+          </td>
+          <td style="font-size:13px;">{{ c.credits }}</td>
+          <td style="font-size:13px;color:#666;">
+            {{ c.faculty_name or "Not assigned" }}
+          </td>
+          <td>
+            <a href="/admin/courses/delete/{{ c.id }}"
+               class="btn btn-danger btn-sm"
+               onclick="return confirm('Delete this course?')">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">
+            No courses found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

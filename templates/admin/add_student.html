@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Add Student{% endblock %}
+{% block page_title %}Add New Student{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-person-plus me-2"></i>Student Details
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-600">Login Username</label>
+              <input type="text" name="username"
+                     class="form-control" required
+                     placeholder="e.g. john_doe"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Login Password</label>
+              <input type="password" name="password"
+                     class="form-control" required
+                     placeholder="Min 8 characters"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Full Name</label>
+              <input type="text" name="full_name"
+                     class="form-control" required
+                     placeholder="e.g. John Doe"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Roll Number</label>
+              <input type="text" name="roll_no"
+                     class="form-control" required
+                     placeholder="e.g. CS001"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Department</label>
+              <select name="department" class="form-select" required>
+                <option value="">Select Department</option>
+                {% for dept in depts %}
+                <option value="{{ dept }}">{{ dept }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Semester</label>
+              <select name="semester" class="form-select" required>
+                {% for i in range(1,9) %}
+                <option value="{{ i }}">Semester {{ i }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Email</label>
+              <input type="email" name="email"
+                     class="form-control"
+                     placeholder="student@email.com"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Phone</label>
+              <input type="text" name="phone"
+                     class="form-control"
+                     placeholder="10-digit number"/>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Date of Birth</label>
+              <input type="date" name="dob" class="form-control"/>
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-person-plus me-1"></i>Add Student
+            </button>
+            <a href="/admin/students" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

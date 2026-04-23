@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Manage Users{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-person-lock me-2"></i>All Users</span>
+    <a href="/admin/users/add" class="btn btn-primary btn-sm">
+      <i class="bi bi-person-plus me-1"></i>Add User
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th style="padding:12px 16px;">Username</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Failed Attempts</th>
+          <th>Created</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td style="padding:10px 16px;font-weight:600;font-size:13px;">
+            {{ u.username }}
+          </td>
+          <td>
+            <span class="badge-role role-{{ u.role }}">
+              {{ u.role.upper() }}
+            </span>
+          </td>
+          <td>
+            {% if u.is_locked %}
+              <span class="badge bg-danger">
+                <i class="bi bi-lock me-1"></i>Locked
+              </span>
+            {% else %}
+              <span class="badge bg-success">
+                <i class="bi bi-unlock me-1"></i>Active
+              </span>
+            {% endif %}
+          </td>
+          <td style="font-size:13px;">
+            {% if u.failed_attempts > 0 %}
+              <span style="color:red;">{{ u.failed_attempts }}/5</span>
+            {% else %}
+              <span style="color:green;">0/5</span>
+            {% endif %}
+          </td>
+          <td style="font-size:12px;color:#999;">
+            {{ u.created_at.strftime('%d %b %Y') if u.created_at else "-" }}
+          </td>
+          <td>
+            {% if u.is_locked %}
+            <a href="/admin/users/unlock/{{ u.id }}"
+               class="btn btn-warning btn-sm">
+              <i class="bi bi-unlock me-1"></i>Unlock
+            </a>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

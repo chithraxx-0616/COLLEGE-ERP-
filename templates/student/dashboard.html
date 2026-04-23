@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Student Dashboard{% endblock %}
+{% block page_title %}Student Dashboard{% endblock %}
+
+{% block content %}
+
+{% if student %}
+<!-- Welcome Card -->
+<div class="card mb-4" style="background:linear-gradient(135deg,#4a148c,#6a1b9a);border:none;">
+  <div class="card-body py-4">
+    <div class="d-flex align-items-center gap-3">
+      <div style="width:60px;height:60px;border-radius:50%;
+                  background:rgba(255,255,255,0.2);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:24px;font-weight:700;color:#fff;">
+        {{ student.full_name[0] }}
+      </div>
+      <div>
+        <h5 style="color:#fff;margin:0;font-weight:700;">
+          {{ student.full_name }}
+        </h5>
+        <div style="color:rgba(255,255,255,0.75);font-size:13px;">
+          {{ student.roll_no }} — {{ student.department }}
+        </div>
+        <div style="color:rgba(255,255,255,0.6);font-size:12px;">
+          Semester {{ student.semester }} | {{ student.email }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">
+            Subjects
+          </div>
+          <div style="font-size:28px;font-weight:700;color:#4a148c;">
+            {{ marks|length }}
+          </div>
+        </div>
+        <div class="stat-icon" style="background:#f3e5f5;">
+          <i class="bi bi-book" style="color:#6a1b9a;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">
+            Fee Status
+          </div>
+          <div style="font-size:16px;font-weight:700;color:#c62828;">
+            {% set pending = fees|selectattr("status","ne","paid")|list %}
+            {% if pending %}
+              {{ pending|length }} Pending
+            {% else %}
+              All Paid
+            {% endif %}
+          </div>
+        </div>
+        <div class="stat-icon" style="background:#ffebee;">
+          <i class="bi bi-cash" style="color:#c62828;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">
+            Semester
+          </div>
+          <div style="font-size:28px;font-weight:700;color:#1565c0;">
+            {{ student.semester }}
+          </div>
+        </div>
+        <div class="stat-icon" style="background:#e3f2fd;">
+          <i class="bi bi-mortarboard" style="color:#1565c0;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+      </div>
+      <div class="card-body d-flex gap-2 flex-wrap">
+        <a href="/student/marks" class="btn btn-primary btn-sm">
+          <i class="bi bi-bar-chart me-1"></i>View Marks
+        </a>
+        <a href="/student/attendance" class="btn btn-primary btn-sm">
+          <i class="bi bi-check2-square me-1"></i>My Attendance
+        </a>
+        <a href="/student/fees" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-cash me-1"></i>Fee Status
+        </a>
+        <a href="/student/queries" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-question-circle me-1"></i>Raise Query
+        </a>
+        <a href="/student/messages" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-chat-dots me-1"></i>Messages
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <!-- Marks -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-bar-chart me-2"></i>My Marks</span>
+        <a href="/student/marks" class="btn btn-sm btn-outline-primary">
+          View All
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Subject</th>
+              <th>Marks</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mark in marks[:5] %}
+            <tr>
+              <td style="padding:10px 16px;font-size:13px;font-weight:600;">
+                {{ mark.course_name }}
+              </td>
+              <td style="font-size:13px;">
+                {{ mark.marks_obtained }}/{{ mark.max_marks }}
+              </td>
+              <td>
+                {% set pct = (mark.marks_obtained/mark.max_marks*100)|int %}
+                {% if pct >= 75 %}
+                  <span class="badge bg-success">A</span>
+                {% elif pct >= 60 %}
+                  <span class="badge bg-primary">B</span>
+                {% elif pct >= 50 %}
+                  <span class="badge bg-warning text-dark">C</span>
+                {% else %}
+                  <span class="badge bg-danger">F</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="text-center py-4 text-muted">
+                No marks available
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fee Status -->
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-cash me-2"></i>Fee Status</span>
+        <a href="/student/fees" class="btn btn-sm btn-outline-primary">
+          View All
+        </a>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Semester</th>
+              <th>Amount</th>
+              <th>Paid</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for fee in fees %}
+            <tr>
+              <td style="padding:10px 16px;font-size:13px;">
+                Sem {{ fee.semester }}
+              </td>
+              <td style="font-size:13px;">₹{{ fee.amount }}</td>
+              <td style="font-size:13px;">₹{{ fee.paid }}</td>
+              <td>
+                {% if fee.status == "paid" %}
+                  <span class="badge bg-success">Paid</span>
+                {% elif fee.status == "partial" %}
+                  <span class="badge bg-warning text-dark">Partial</span>
+                {% else %}
+                  <span class="badge bg-danger">Pending</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                No fee records
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="card-body text-center py-5">
+    <i class="bi bi-person-x" style="font-size:48px;color:#ccc;"></i>
+    <div class="mt-3 text-muted">Student profile not found.</div>
+    <div class="mt-1" style="font-size:13px;color:#aaa;">
+      Contact admin to set up your profile.
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

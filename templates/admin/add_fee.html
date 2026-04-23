@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Add Fee Record{% endblock %}
+{% block page_title %}Add Fee Record{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-cash me-2"></i>Fee Details
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label fw-600">Student</label>
+              <select name="student_id" class="form-select" required>
+                <option value="">Select Student</option>
+                {% for s in students %}
+                <option value="{{ s.id }}">
+                  {{ s.full_name }} ({{ s.roll_no }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Semester</label>
+              <select name="semester" class="form-select" required>
+                {% for i in range(1,9) %}
+                <option value="{{ i }}">Semester {{ i }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-600">Amount (₹)</label>
+              <input type="number" name="amount"
+                     class="form-control" required
+                     placeholder="e.g. 50000"/>
+            </div>
+            <div class="col-12">
+              <label class="form-label fw-600">Due Date</label>
+              <input type="date" name="due_date"
+                     class="form-control" required/>
+            </div>
+          </div>
+          <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-plus-circle me-1"></i>Add Fee Record
+            </button>
+            <a href="/admin/fees" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — College ERP</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet"/>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a237e 0%, #283593 50%, #1565c0 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    .login-wrapper {
+      display: flex;
+      width: 860px;
+      min-height: 500px;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+    }
+
+    .login-left {
+      flex: 1;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(10px);
+      padding: 50px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      color: #fff;
+      border-right: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .login-left h1 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .login-left p {
+      font-size: 14px;
+      opacity: 0.75;
+      margin-bottom: 32px;
+    }
+
+    .feature-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      font-size: 14px;
+      opacity: 0.85;
+    }
+
+    .feature-icon {
+      width: 36px; height: 36px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .login-right {
+      width: 380px;
+      background: #fff;
+      padding: 50px 40px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .login-right h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #1a237e;
+      margin-bottom: 6px;
+    }
+
+    .login-right p {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 28px;
+    }
+
+    .form-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #444;
+      margin-bottom: 6px;
+    }
+
+    .form-control {
+      border: 1.5px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 14px;
+      transition: border-color 0.2s;
+    }
+
+    .form-control:focus {
+      border-color: #1a237e;
+      box-shadow: 0 0 0 3px rgba(26,35,126,0.1);
+    }
+
+    .input-group-text {
+      border: 1.5px solid #e0e0e0;
+      background: #f8f9fa;
+      color: #888;
+      border-radius: 8px 0 0 8px;
+    }
+
+    .btn-login {
+      background: linear-gradient(135deg, #1a237e, #1565c0);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      width: 100%;
+      margin-top: 8px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-login:hover { opacity: 0.9; color: #fff; }
+
+    .alert {
+      border-radius: 8px;
+      font-size: 13px;
+      padding: 10px 14px;
+      border: none;
+    }
+
+    .security-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #aaa;
+      margin-top: 20px;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="login-wrapper">
+  <!-- Left Panel -->
+  <div class="login-left">
+    <h1>🎓 College ERP</h1>
+    <p>Secure Education Management System</p>
+
+    <div class="feature-item">
+      <div class="feature-icon">🔐</div>
+      <div>
+        <strong>SQL Injection Prevention</strong><br>
+        <span style="font-size:12px;opacity:0.7;">Parameterized queries everywhere</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-icon">👥</div>
+      <div>
+        <strong>Role-Based Access Control</strong><br>
+        <span style="font-size:12px;opacity:0.7;">Admin, Principal, HOD, Faculty, Student</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-icon">🔒</div>
+      <div>
+        <strong>bcrypt Authentication</strong><br>
+        <span style="font-size:12px;opacity:0.7;">Passwords hashed with 12 salt rounds</span>
+      </div>
+    </div>
+
+    <div class="feature-item">
+      <div class="feature-icon">📋</div>
+      <div>
+        <strong>Audit Logging</strong><br>
+        <span style="font-size:12px;opacity:0.7;">Every action tracked with IP address</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="login-right">
+    <h2>Welcome Back</h2>
+    <p>Sign in to your account to continue</p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} mb-3">
+            <i class="bi bi-exclamation-circle me-2"></i>{{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/login">
+      <div class="mb-3">
+        <label class="form-label">Username</label>
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-person"></i>
+          </span>
+          <input type="text" name="username"
+                 class="form-control"
+                 placeholder="Enter username"
+                 required autofocus/>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Password</label>
+        <div class="input-group">
+          <span class="input-group-text">
+            <i class="bi bi-lock"></i>
+          </span>
+          <input type="password" name="password"
+                 class="form-control"
+                 placeholder="Enter password"
+                 required/>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-login">
+        <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+      </button>
+    </form>
+
+    <div class="security-badge">
+      <i class="bi bi-shield-check" style="color:#4caf50;"></i>
+      Protected by bcrypt + SQLi Prevention
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Enter Marks{% endblock %}
+{% block page_title %}Enter Student Marks{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Enter Marks Form -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-clipboard-data me-2"></i>Enter Marks
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <div class="mb-3">
+            <label class="form-label fw-600">Course</label>
+            <select name="course_id" class="form-select" required>
+              <option value="">Select Course</option>
+              {% for c in courses %}
+              <option value="{{ c.id }}">
+                {{ c.code }} — {{ c.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Student</label>
+            <select name="student_id" class="form-select" required>
+              <option value="">Select Student</option>
+              {% for s in students %}
+              <option value="{{ s.id }}">
+                {{ s.full_name }} ({{ s.roll_no }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Exam Type</label>
+            <select name="exam_type" class="form-select">
+              <option value="internal">Internal</option>
+              <option value="midterm">Midterm</option>
+              <option value="final">Final</option>
+              <option value="assignment">Assignment</option>
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col">
+              <label class="form-label fw-600">Marks Obtained</label>
+              <input type="number" name="marks_obtained"
+                     class="form-control" required
+                     min="0" max="100"
+                     placeholder="e.g. 85"/>
+            </div>
+            <div class="col">
+              <label class="form-label fw-600">Max Marks</label>
+              <input type="number" name="max_marks"
+                     class="form-control" value="100"/>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-save me-1"></i>Save Marks
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Marks List -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-table me-2"></i>Marks Records
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Student</th>
+              <th>Course</th>
+              <th>Type</th>
+              <th>Marks</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in marks_list %}
+            <tr>
+              <td style="padding:10px 16px;font-size:13px;
+                         font-weight:600;">
+                {{ m.full_name }}<br>
+                <small style="color:#999;">{{ m.roll_no }}</small>
+              </td>
+              <td style="font-size:12px;">{{ m.course_name }}</td>
+              <td>
+                <span class="badge bg-secondary">
+                  {{ m.exam_type }}
+                </span>
+              </td>
+              <td style="font-size:13px;">
+                {{ m.marks_obtained }}/{{ m.max_marks }}
+              </td>
+              <td>
+                {% set pct = (m.marks_obtained/m.max_marks*100)|int %}
+                {% if pct >= 75 %}
+                  <span class="badge bg-success">A</span>
+                {% elif pct >= 60 %}
+                  <span class="badge bg-primary">B</span>
+                {% elif pct >= 50 %}
+                  <span class="badge bg-warning text-dark">C</span>
+                {% else %}
+                  <span class="badge bg-danger">F</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-4 text-muted">
+                No marks entered yet
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

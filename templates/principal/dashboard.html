@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Principal Dashboard{% endblock %}
+{% block page_title %}Principal Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">Total Students</div>
+          <div style="font-size:28px;font-weight:700;color:#1a237e;">{{ students }}</div>
+        </div>
+        <div class="stat-icon" style="background:#e8eaf6;">
+          <i class="bi bi-people" style="color:#3949ab;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">Total Faculty</div>
+          <div style="font-size:28px;font-weight:700;color:#1565c0;">{{ faculty }}</div>
+        </div>
+        <div class="stat-icon" style="background:#e3f2fd;">
+          <i class="bi bi-person-badge" style="color:#1565c0;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="stat-card">
+      <div class="d-flex align-items-center justify-content-between">
+        <div>
+          <div style="font-size:13px;color:#888;margin-bottom:4px;">Total Courses</div>
+          <div style="font-size:28px;font-weight:700;color:#00695c;">{{ courses }}</div>
+        </div>
+        <div class="stat-icon" style="background:#e0f2f1;">
+          <i class="bi bi-book" style="color:#00695c;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Faculty List -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-person-badge me-2"></i>Faculty Overview
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Name</th>
+              <th>Department</th>
+              <th>Designation</th>
+              <th>Courses</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in faculty_list %}
+            <tr>
+              <td style="padding:10px 16px;font-weight:600;font-size:13px;">
+                {{ f.full_name }}
+              </td>
+              <td style="font-size:13px;">{{ f.department }}</td>
+              <td style="font-size:13px;">{{ f.designation }}</td>
+              <td>
+                <span class="badge bg-primary">
+                  {{ f.course_count }} courses
+                </span>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center py-4 text-muted">
+                No faculty records found
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Leave Requests -->
+<div class="row g-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-calendar-x me-2"></i>Recent Leave Requests
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Faculty</th>
+              <th>Department</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for leave in leaves %}
+            <tr>
+              <td style="padding:10px 16px;font-weight:600;font-size:13px;">
+                {{ leave.full_name }}
+              </td>
+              <td style="font-size:13px;">{{ leave.department }}</td>
+              <td style="font-size:13px;">{{ leave.from_date }}</td>
+              <td style="font-size:13px;">{{ leave.to_date }}</td>
+              <td>
+                {% if leave.status == "approved" %}
+                  <span class="badge bg-success">Approved</span>
+                {% elif leave.status == "rejected" %}
+                  <span class="badge bg-danger">Rejected</span>
+                {% else %}
+                  <span class="badge bg-warning text-dark">Pending</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="5" class="text-center py-4 text-muted">
+                No leave requests
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

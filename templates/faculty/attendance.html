@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Mark Attendance{% endblock %}
+{% block page_title %}Mark Attendance{% endblock %}
+
+{% block content %}
+<div class="row g-3">
+  <!-- Attendance Form -->
+  <div class="col-md-5">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-check2-square me-2"></i>Mark Attendance
+      </div>
+      <div class="card-body">
+        <!-- Course selector -->
+        <form method="GET" class="mb-3">
+          <label class="form-label fw-600">Select Course</label>
+          <div class="input-group">
+            <select name="course_id" class="form-select">
+              <option value="">Select Course</option>
+              {% for c in courses %}
+              <option value="{{ c.id }}"
+                {% if selected_course == c.id|string %}
+                  selected
+                {% endif %}>
+                {{ c.code }} — {{ c.name }}
+              </option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-primary">
+              Load
+            </button>
+          </div>
+        </form>
+
+        {% if students %}
+        <form method="POST">
+          <input type="hidden" name="course_id"
+                 value="{{ selected_course }}"/>
+          <div class="mb-3">
+            <label class="form-label fw-600">Date</label>
+            <input type="date" name="date"
+                   class="form-control" required
+                   value="{{ today }}"/>
+          </div>
+          <div style="max-height:300px;overflow-y:auto;">
+            {% for s in students %}
+            <input type="hidden" name="student_ids"
+                   value="{{ s.id }}"/>
+            <div class="d-flex align-items-center justify-content-between
+                        p-2 mb-1"
+                 style="background:#f8f9fa;border-radius:8px;">
+              <div>
+                <div style="font-size:13px;font-weight:600;">
+                  {{ s.full_name }}
+                </div>
+                <div style="font-size:11px;color:#999;">
+                  {{ s.roll_no }}
+                </div>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox"
+                       name="present" value="{{ s.id }}"
+                       checked style="width:40px;height:20px;"/>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mt-3">
+            <i class="bi bi-save me-1"></i>Save Attendance
+          </button>
+        </form>
+        {% elif selected_course %}
+        <div class="text-center py-3 text-muted">
+          No students enrolled in this course
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Attendance Records -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-table me-2"></i>Recent Attendance
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-hover mb-0">
+          <thead style="background:#f8f9fa;">
+            <tr>
+              <th style="padding:12px 16px;">Student</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for a in attendance_records %}
+            <tr>
+              <td style="padding:10px 16px;font-size:13px;
+                         font-weight:600;">
+                {{ a.full_name }}<br>
+                <small style="color:#999;">{{ a.roll_no }}</small>
+              </td>
+              <td style="font-size:13px;">{{ a.date }}</td>
+              <td>
+                {% if a.status == "present" %}
+                  <span class="badge bg-success">Present</span>
+                {% elif a.status == "late" %}
+                  <span class="badge bg-warning text-dark">Late</span>
+                {% else %}
+                  <span class="badge bg-danger">Absent</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="3" class="text-center py-4 text-muted">
+                Select a course to view attendance
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
