@@ -1143,10 +1143,16 @@ def faculty_marks():
     courses = cursor.fetchall()
 
     cursor.execute(
-        "SELECT s.id, s.full_name, s.roll_no, s.department "
-        "FROM students s JOIN enrollments e ON s.id = e.student_id "
-        "JOIN courses c ON e.course_id = c.id "
-        "WHERE c.faculty_id = %s", (fac["id"],)
+        "SELECT department FROM faculty WHERE id = %s", (fac["id"],)
+    )
+    fac_dept = cursor.fetchone()
+    dept = fac_dept["department"] if fac_dept else ""
+    cursor.execute(
+        "SELECT s.id, s.full_name, s.roll_no, "
+        "s.department, s.semester "
+        "FROM students s WHERE s.department = %s "
+        "ORDER BY s.semester, s.roll_no",
+        (dept,)
     )
     students = cursor.fetchall()
 
@@ -1226,10 +1232,18 @@ def faculty_attendance():
 
     if selected_course:
         cursor.execute(
+            "SELECT f.department FROM faculty f "
+            "JOIN courses c ON f.id=c.faculty_id "
+            "WHERE c.id=%s", (selected_course,)
+        )
+        cdept_row = cursor.fetchone()
+        cdept = cdept_row["department"] if cdept_row else ""
+        cursor.execute(
             "SELECT s.id, s.full_name, s.roll_no "
-            "FROM students s JOIN enrollments e ON s.id=e.student_id "
-            "WHERE e.course_id=%s ORDER BY s.roll_no",
-            (selected_course,)
+            "FROM students s "
+            "WHERE s.department=%s "
+            "ORDER BY s.roll_no",
+            (cdept,)
         )
         students = cursor.fetchall()
         cursor.execute(
@@ -1890,7 +1904,80 @@ def principal_leaves():
         selected_status=status
     )
 
+# ══════════════════════════════════════════════════════════════════
+# ADMIN — ENROLLMENTS
+# ══════════════════════════════════════════════════════════════════
 
+@app.route("/admin/enroll", methods=["GET", "POST"])
+@login_required
+@role_required("admin")
+def admin_enroll():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    if request.method == "POST":
+        student_id = request.form.get("student_id")
+        course_id  = request.form.get("course_id")
+        try:
+            cursor.execute(
+                "INSERT IGNORE INTO enrollments "
+                "(student_id, course_id) VALUES (%s,%s)",
+                (student_id, course_id)
+            )
+            db.commit()
+            log_audit(session["user_id"], "ENROLL",
+                      f"Enrolled student={student_id} "
+                      f"course={course_id}")
+            flash("Student enrolled successfully!", "success")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    cursor.execute(
+        "SELECT s.id, s.full_name, s.roll_no, s.department "
+        "FROM students s ORDER BY s.department, s.full_name"
+    )
+    students = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT c.id, c.code, c.name, c.department, "
+        "f.full_name as faculty_name "
+        "FROM courses c "
+        "LEFT JOIN faculty f ON c.faculty_id=f.id "
+        "ORDER BY c.department, c.name"
+    )
+    courses = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT e.id, s.full_name, s.roll_no, "
+        "c.code, c.name as course_name, c.department "
+        "FROM enrollments e "
+        "JOIN students s ON e.student_id=s.id "
+        "JOIN courses c ON e.course_id=c.id "
+        "ORDER BY c.department, s.roll_no"
+    )
+    enrollments = cursor.fetchall()
+    db.close()
+
+    return render_template("admin/enroll.html",
+        students=students,
+        courses=courses,
+        enrollments=enrollments
+    )
+
+
+@app.route("/admin/enroll/delete/<int:eid>")
+@login_required
+@role_required("admin")
+def admin_delete_enrollment(eid):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "DELETE FROM enrollments WHERE id=%s", (eid,)
+    )
+    db.commit()
+    db.close()
+    flash("Enrollment removed!", "success")
+    return redirect(url_for("admin_enroll"))
 # ── Run ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
