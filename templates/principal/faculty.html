@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+{% block title %}All Faculty{% endblock %}
+{% block page_title %}All Faculty — Overview{% endblock %}
+
+{% block content %}
+
+<!-- Dept wise count cards -->
+<div class="row g-3 mb-4">
+  {% for dc in dept_counts %}
+  <div class="col-md-3">
+    <div class="stat-card">
+      <div class="d-flex align-items-center
+                  justify-content-between">
+        <div>
+          <div style="font-size:12px;color:#888;margin-bottom:4px;">
+            {{ dc.department }}
+          </div>
+          <div style="font-size:24px;font-weight:700;
+                      color:#1565c0;">
+            {{ dc.count }}
+          </div>
+          <div style="font-size:11px;color:#aaa;">faculty</div>
+        </div>
+        <div class="stat-icon" style="background:#e3f2fd;">
+          <i class="bi bi-person-badge"
+             style="color:#1565c0;"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Filter -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form method="GET"
+          class="d-flex align-items-center gap-3 flex-wrap">
+      <label class="fw-600"
+             style="white-space:nowrap;font-size:14px;">
+        Filter by Department:
+      </label>
+      <select name="dept" class="form-select form-select-sm"
+              style="width:200px;"
+              onchange="this.form.submit()">
+        <option value="">All Departments</option>
+        {% for d in depts %}
+        <option value="{{ d }}"
+          {% if selected_dept==d %}selected{% endif %}>
+          {{ d }}
+        </option>
+        {% endfor %}
+      </select>
+      <a href="/principal/faculty"
+         class="btn btn-outline-secondary btn-sm">
+        Clear
+      </a>
+      <span class="badge bg-primary ms-auto">
+        {{ faculty|length }} faculty
+      </span>
+    </form>
+  </div>
+</div>
+
+<!-- Faculty Table -->
+<div class="card mb-4">
+  <div class="card-header">
+    <i class="bi bi-person-badge me-2"></i>
+    Faculty Records
+    {% if selected_dept %} — {{ selected_dept }}{% endif %}
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th style="padding:12px 16px;">#</th>
+          <th>Name</th>
+          <th>Department</th>
+          <th>Designation</th>
+          <th>Email</th>
+          <th>Courses</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for f in faculty %}
+        <tr>
+          <td style="padding:10px 16px;font-size:12px;
+                     color:#999;">
+            {{ loop.index }}
+          </td>
+          <td style="font-weight:600;font-size:13px;">
+            {{ f.full_name }}
+          </td>
+          <td>
+            <span class="badge bg-success">
+              {{ f.department }}
+            </span>
+          </td>
+          <td style="font-size:13px;">{{ f.designation }}</td>
+          <td style="font-size:12px;color:#666;">
+            {{ f.email or "-" }}
+          </td>
+          <td>
+            <span class="badge bg-primary">
+              {{ f.course_count }} courses
+            </span>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center py-4 text-muted">
+            No faculty found
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Faculty Subject Mapping -->
+<div class="card">
+  <div class="card-header">
+    <i class="bi bi-book me-2"></i>
+    Faculty — Subject Mapping
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead style="background:#f8f9fa;">
+        <tr>
+          <th style="padding:12px 16px;">Faculty Name</th>
+          <th>Department</th>
+          <th>Subjects Handling</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for fc in faculty_courses %}
+        <tr>
+          <td style="padding:10px 16px;font-weight:600;
+                     font-size:13px;">
+            {{ fc.full_name }}
+          </td>
+          <td>
+            <span class="badge bg-success">
+              {{ fc.department }}
+            </span>
+          </td>
+          <td style="font-size:13px;color:#444;">
+            {% if fc.courses %}
+              {% for course in fc.courses.split(', ') %}
+              <span class="badge bg-light text-dark me-1 mb-1"
+                    style="border:1px solid #ddd;">
+                {{ course }}
+              </span>
+              {% endfor %}
+            {% else %}
+              <span style="color:#aaa;">No courses assigned</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

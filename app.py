@@ -17,7 +17,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
 
-# ── Database Config ────────────────────────────────────────────────────────────
+# ── Database Config ─────────────────────────────────────────────
 DB_CONFIG = {
     "host":     os.getenv("DB_HOST",     "localhost"),
     "user":     os.getenv("DB_USER",     "root"),
@@ -29,7 +29,7 @@ DB_CONFIG = {
 def get_db():
     return mysql.connector.connect(**DB_CONFIG)
 
-# ── Auth Helpers ───────────────────────────────────────────────────────────────
+# ── Auth Helpers ────────────────────────────────────────────────
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -72,7 +72,7 @@ def log_audit(user_id, action, detail=""):
     except:
         pass
 
-# ── Routes ─────────────────────────────────────────────────────────────────────
+# ── Routes ──────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
@@ -80,12 +80,12 @@ def index():
         return redirect(url_for("dashboard"))
     return redirect(url_for("login"))
 
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
-
         try:
             db = get_db()
             cursor = db.cursor(dictionary=True)
@@ -168,6 +168,18 @@ def dashboard():
         return redirect(url_for("logout"))
 
 
+@app.route("/logout")
+def logout():
+    log_audit(session.get("user_id"), "LOGOUT", "User logged out")
+    session.clear()
+    flash("Logged out successfully.", "success")
+    return redirect(url_for("login"))
+
+
+# ══════════════════════════════════════════════════════════════════
+# ADMIN — DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
 @app.route("/admin")
 @login_required
 @role_required("admin")
@@ -197,145 +209,6 @@ def admin_dashboard():
     )
 
 
-@app.route("/principal")
-@login_required
-@role_required("principal", "admin")
-def principal_dashboard():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT COUNT(*) as count FROM students")
-    students = cursor.fetchone()["count"]
-    cursor.execute("SELECT COUNT(*) as count FROM faculty")
-    faculty = cursor.fetchone()["count"]
-    cursor.execute("SELECT COUNT(*) as count FROM courses")
-    courses = cursor.fetchone()["count"]
-    cursor.execute(
-        "SELECT f.full_name, f.department, f.designation, "
-        "COUNT(c.id) as course_count "
-        "FROM faculty f LEFT JOIN courses c ON f.id = c.faculty_id "
-        "GROUP BY f.id ORDER BY f.department"
-    )
-    faculty_list = cursor.fetchall()
-    cursor.execute(
-        "SELECT lr.*, f.full_name, f.department "
-        "FROM leave_requests lr "
-        "JOIN faculty f ON lr.faculty_id = f.id "
-        "ORDER BY lr.created_at DESC LIMIT 10"
-    )
-    leaves = cursor.fetchall()
-    db.close()
-    return render_template("principal/dashboard.html",
-        students=students, faculty=faculty,
-        courses=courses, faculty_list=faculty_list, leaves=leaves
-    )
-
-
-@app.route("/hod")
-@login_required
-@role_required("hod", "admin")
-def hod_dashboard():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT department FROM faculty WHERE user_id = %s",
-        (session["user_id"],)
-    )
-    hod = cursor.fetchone()
-    dept = hod["department"] if hod else ""
-    cursor.execute(
-        "SELECT * FROM faculty WHERE department = %s", (dept,)
-    )
-    faculty_list = cursor.fetchall()
-    cursor.execute(
-        "SELECT * FROM students WHERE department = %s", (dept,)
-    )
-    students = cursor.fetchall()
-    cursor.execute(
-        "SELECT * FROM events WHERE department = %s "
-        "OR department = 'ALL' ORDER BY event_date DESC LIMIT 5",
-        (dept,)
-    )
-    events = cursor.fetchall()
-    db.close()
-    return render_template("hod/dashboard.html",
-        dept=dept, faculty_list=faculty_list,
-        students=students, events=events
-    )
-
-
-@app.route("/faculty")
-@login_required
-@role_required("faculty", "admin")
-def faculty_dashboard():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT f.*, u.username FROM faculty f "
-        "JOIN users u ON f.user_id = u.id "
-        "WHERE f.user_id = %s", (session["user_id"],)
-    )
-    faculty = cursor.fetchone()
-    if faculty:
-        cursor.execute(
-            "SELECT * FROM courses WHERE faculty_id = %s",
-            (faculty["id"],)
-        )
-        courses = cursor.fetchall()
-        cursor.execute(
-            "SELECT * FROM leave_requests WHERE faculty_id = %s "
-            "ORDER BY created_at DESC LIMIT 5",
-            (faculty["id"],)
-        )
-        leaves = cursor.fetchall()
-    else:
-        courses = []
-        leaves  = []
-    db.close()
-    return render_template("faculty/dashboard.html",
-        faculty=faculty, courses=courses, leaves=leaves
-    )
-
-
-@app.route("/student")
-@login_required
-@role_required("student", "admin")
-def student_dashboard_extra():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT s.*, u.username FROM students s "
-        "JOIN users u ON s.user_id = u.id "
-        "WHERE s.user_id = %s", (session["user_id"],)
-    )
-    student = cursor.fetchone()
-    if student:
-        cursor.execute(
-            "SELECT m.*, c.name as course_name, c.code "
-            "FROM marks m JOIN courses c ON m.course_id = c.id "
-            "WHERE m.student_id = %s", (student["id"],)
-        )
-        marks = cursor.fetchall()
-        cursor.execute(
-            "SELECT * FROM fees WHERE student_id = %s",
-            (student["id"],)
-        )
-        fees = cursor.fetchall()
-    else:
-        marks = []
-        fees  = []
-    db.close()
-    return render_template("student/dashboard.html",
-        student=student, marks=marks, fees=fees
-    )
-
-
-@app.route("/logout")
-def logout():
-    log_audit(session.get("user_id"), "LOGOUT", "User logged out")
-    session.clear()
-    flash("Logged out successfully.", "success")
-    return redirect(url_for("login"))
-
 # ══════════════════════════════════════════════════════════════════
 # ADMIN — STUDENTS
 # ══════════════════════════════════════════════════════════════════
@@ -348,8 +221,7 @@ def admin_students():
     cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT s.*, u.username FROM students s "
-        "JOIN users u ON s.user_id = u.id "
-        "ORDER BY s.id"
+        "JOIN users u ON s.user_id = u.id ORDER BY s.id"
     )
     students = cursor.fetchall()
     db.close()
@@ -414,17 +286,13 @@ def admin_delete_student(sid):
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute(
-            "SELECT user_id, full_name FROM students WHERE id = %s",
-            (sid,)
+            "SELECT user_id, full_name FROM students WHERE id = %s", (sid,)
         )
         student = cursor.fetchone()
         if student:
+            cursor.execute("DELETE FROM students WHERE id = %s", (sid,))
             cursor.execute(
-                "DELETE FROM students WHERE id = %s", (sid,)
-            )
-            cursor.execute(
-                "DELETE FROM users WHERE id = %s",
-                (student["user_id"],)
+                "DELETE FROM users WHERE id = %s", (student["user_id"],)
             )
             db.commit()
             log_audit(session["user_id"], "STUDENT_DELETE",
@@ -448,8 +316,7 @@ def admin_faculty():
     cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT f.*, u.username FROM faculty f "
-        "JOIN users u ON f.user_id = u.id "
-        "ORDER BY f.department"
+        "JOIN users u ON f.user_id = u.id ORDER BY f.department"
     )
     faculty = cursor.fetchall()
     db.close()
@@ -487,10 +354,8 @@ def admin_add_faculty():
             user_id = cursor.lastrowid
             cursor.execute(
                 "INSERT INTO faculty (user_id, full_name, department, "
-                "designation, email, phone) "
-                "VALUES (%s, %s, %s, %s, %s, %s)",
-                (user_id, full_name, dept,
-                 designation, email, phone)
+                "designation, email, phone) VALUES (%s, %s, %s, %s, %s, %s)",
+                (user_id, full_name, dept, designation, email, phone)
             )
             db.commit()
             db.close()
@@ -513,14 +378,11 @@ def admin_delete_faculty(fid):
         db = get_db()
         cursor = db.cursor(dictionary=True)
         cursor.execute(
-            "SELECT user_id, full_name FROM faculty WHERE id = %s",
-            (fid,)
+            "SELECT user_id, full_name FROM faculty WHERE id = %s", (fid,)
         )
         fac = cursor.fetchone()
         if fac:
-            cursor.execute(
-                "DELETE FROM faculty WHERE id = %s", (fid,)
-            )
+            cursor.execute("DELETE FROM faculty WHERE id = %s", (fid,))
             cursor.execute(
                 "DELETE FROM users WHERE id = %s", (fac["user_id"],)
             )
@@ -546,8 +408,7 @@ def admin_courses():
     cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT c.*, f.full_name as faculty_name "
-        "FROM courses c "
-        "LEFT JOIN faculty f ON c.faculty_id = f.id "
+        "FROM courses c LEFT JOIN faculty f ON c.faculty_id = f.id "
         "ORDER BY c.department"
     )
     courses = cursor.fetchall()
@@ -583,7 +444,9 @@ def admin_add_course():
             flash(f"Error: {e}", "danger")
     db = get_db()
     cursor = db.cursor(dictionary=True)
-    cursor.execute("SELECT id, full_name, department FROM faculty ORDER BY department")
+    cursor.execute(
+        "SELECT id, full_name, department FROM faculty ORDER BY department"
+    )
     faculty = cursor.fetchall()
     db.close()
     DEPTS = ["AIML","AIDS","CYBERSECURITY","CSE",
@@ -643,8 +506,8 @@ def admin_add_fee():
             db = get_db()
             cursor = db.cursor()
             cursor.execute(
-                "INSERT INTO fees (student_id, semester, "
-                "amount, due_date) VALUES (%s,%s,%s,%s)",
+                "INSERT INTO fees (student_id, semester, amount, due_date) "
+                "VALUES (%s,%s,%s,%s)",
                 (student_id, semester, amount, due_date)
             )
             db.commit()
@@ -699,8 +562,7 @@ def admin_pay_fee(fid):
     cursor = db.cursor(dictionary=True)
     cursor.execute(
         "SELECT f.*, s.full_name FROM fees f "
-        "JOIN students s ON f.student_id = s.id WHERE f.id = %s",
-        (fid,)
+        "JOIN students s ON f.student_id = s.id WHERE f.id = %s", (fid,)
     )
     fee = cursor.fetchone()
     db.close()
@@ -753,13 +615,12 @@ def admin_unlock_user(uid):
     db = get_db()
     cursor = db.cursor()
     cursor.execute(
-        "UPDATE users SET is_locked = 0, failed_attempts = 0 "
-        "WHERE id = %s", (uid,)
+        "UPDATE users SET is_locked = 0, failed_attempts = 0 WHERE id = %s",
+        (uid,)
     )
     db.commit()
     db.close()
-    log_audit(session["user_id"], "USER_UNLOCK",
-              f"Unlocked user id={uid}")
+    log_audit(session["user_id"], "USER_UNLOCK", f"Unlocked user id={uid}")
     flash("User unlocked successfully!", "success")
     return redirect(url_for("admin_users"))
 
@@ -795,6 +656,436 @@ def admin_add_user():
         except Exception as e:
             flash(f"Error: {e}", "danger")
     return render_template("admin/add_user.html")
+
+
+# ══════════════════════════════════════════════════════════════════
+# PRINCIPAL — DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/principal")
+@login_required
+@role_required("principal", "admin")
+def principal_dashboard():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute("SELECT COUNT(*) as count FROM students")
+    students = cursor.fetchone()["count"]
+    cursor.execute("SELECT COUNT(*) as count FROM faculty")
+    faculty = cursor.fetchone()["count"]
+    cursor.execute("SELECT COUNT(*) as count FROM courses")
+    courses = cursor.fetchone()["count"]
+    cursor.execute(
+        "SELECT f.full_name, f.department, f.designation, "
+        "COUNT(c.id) as course_count "
+        "FROM faculty f LEFT JOIN courses c ON f.id = c.faculty_id "
+        "GROUP BY f.id ORDER BY f.department"
+    )
+    faculty_list = cursor.fetchall()
+    cursor.execute(
+        "SELECT lr.*, f.full_name, f.department "
+        "FROM leave_requests lr "
+        "JOIN faculty f ON lr.faculty_id = f.id "
+        "ORDER BY lr.created_at DESC LIMIT 10"
+    )
+    leaves = cursor.fetchall()
+    db.close()
+    return render_template("principal/dashboard.html",
+        students=students, faculty=faculty,
+        courses=courses, faculty_list=faculty_list, leaves=leaves
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod")
+@login_required
+@role_required("hod", "admin")
+def hod_dashboard():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT department FROM faculty WHERE user_id = %s",
+        (session["user_id"],)
+    )
+    hod = cursor.fetchone()
+    dept = hod["department"] if hod else ""
+    cursor.execute(
+        "SELECT * FROM faculty WHERE department = %s", (dept,)
+    )
+    faculty_list = cursor.fetchall()
+    cursor.execute(
+        "SELECT * FROM students WHERE department = %s", (dept,)
+    )
+    students = cursor.fetchall()
+    cursor.execute(
+        "SELECT * FROM events WHERE department = %s "
+        "OR department = 'ALL' ORDER BY event_date DESC LIMIT 5",
+        (dept,)
+    )
+    events = cursor.fetchall()
+    db.close()
+    return render_template("hod/dashboard.html",
+        dept=dept, faculty_list=faculty_list,
+        students=students, events=events
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — HELPER
+# ══════════════════════════════════════════════════════════════════
+
+def get_hod_dept():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT department FROM faculty WHERE user_id = %s",
+        (session["user_id"],)
+    )
+    hod = cursor.fetchone()
+    db.close()
+    return hod["department"] if hod else None
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — FACULTY
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/faculty")
+@login_required
+@role_required("hod", "admin")
+def hod_faculty():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT f.*, u.username, "
+        "(SELECT COUNT(*) FROM courses c WHERE c.faculty_id=f.id) "
+        "as course_count, "
+        "(SELECT COUNT(*) FROM leave_requests lr "
+        "WHERE lr.faculty_id=f.id AND lr.status='pending') "
+        "as pending_leaves "
+        "FROM faculty f JOIN users u ON f.user_id=u.id "
+        "WHERE f.department=%s ORDER BY f.designation",
+        (dept,)
+    )
+    faculty = cursor.fetchall()
+    db.close()
+    return render_template("hod/faculty.html", faculty=faculty, dept=dept)
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — STUDENTS
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/students")
+@login_required
+@role_required("hod", "admin")
+def hod_students():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    semester = request.args.get("semester", "")
+    if semester:
+        cursor.execute(
+            "SELECT s.*, u.username FROM students s "
+            "JOIN users u ON s.user_id=u.id "
+            "WHERE s.department=%s AND s.semester=%s "
+            "ORDER BY s.roll_no",
+            (dept, semester)
+        )
+    else:
+        cursor.execute(
+            "SELECT s.*, u.username FROM students s "
+            "JOIN users u ON s.user_id=u.id "
+            "WHERE s.department=%s ORDER BY s.semester, s.roll_no",
+            (dept,)
+        )
+    students = cursor.fetchall()
+    db.close()
+    return render_template("hod/students.html",
+        students=students, dept=dept, semester=semester
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — TIMETABLE
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/timetable")
+@login_required
+@role_required("hod", "admin")
+def hod_timetable():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT t.*, c.name as course_name, c.code, "
+        "f.full_name as faculty_name "
+        "FROM timetable t "
+        "LEFT JOIN courses c ON t.course_id=c.id "
+        "LEFT JOIN faculty f ON t.faculty_id=f.id "
+        "WHERE t.department=%s "
+        "ORDER BY FIELD(t.day,'Monday','Tuesday','Wednesday',"
+        "'Thursday','Friday','Saturday'), t.period",
+        (dept,)
+    )
+    timetable = cursor.fetchall()
+    db.close()
+    days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+    periods = list(range(1, 9))
+    return render_template("hod/timetable.html",
+        timetable=timetable, dept=dept, days=days, periods=periods
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — EVENTS
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/events")
+@login_required
+@role_required("hod", "admin")
+def hod_events():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT * FROM events WHERE department=%s OR department='ALL' "
+        "ORDER BY event_date DESC", (dept,)
+    )
+    events = cursor.fetchall()
+    db.close()
+    return render_template("hod/events.html", events=events, dept=dept)
+
+
+@app.route("/hod/events/add", methods=["GET", "POST"])
+@login_required
+@role_required("hod", "admin")
+def hod_add_event():
+    dept = get_hod_dept()
+    if request.method == "POST":
+        title       = request.form.get("title").strip()
+        description = request.form.get("description").strip()
+        event_date  = request.form.get("event_date")
+        department  = request.form.get("department", dept)
+        try:
+            db = get_db()
+            cursor = db.cursor()
+            cursor.execute(
+                "INSERT INTO events (title, description, event_date, "
+                "department, created_by) VALUES (%s,%s,%s,%s,%s)",
+                (title, description, event_date,
+                 department, session["user_id"])
+            )
+            db.commit()
+            db.close()
+            log_audit(session["user_id"], "EVENT_ADD",
+                      f"Event added: {title}")
+            flash(f"Event '{title}' added!", "success")
+            return redirect(url_for("hod_events"))
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+    return render_template("hod/add_event.html", dept=dept)
+
+
+@app.route("/hod/events/delete/<int:eid>")
+@login_required
+@role_required("hod", "admin")
+def hod_delete_event(eid):
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM events WHERE id=%s", (eid,))
+    db.commit()
+    db.close()
+    flash("Event deleted!", "success")
+    return redirect(url_for("hod_events"))
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — MESSAGES
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/messages", methods=["GET", "POST"])
+@login_required
+@role_required("hod", "admin")
+def hod_messages():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+
+    if request.method == "POST":
+        receiver_id = request.form.get("receiver_id")
+        subject     = request.form.get("subject")
+        body        = request.form.get("body")
+        send_to_all = request.form.get("send_to_all")
+        try:
+            if send_to_all == "students":
+                cursor.execute(
+                    "SELECT u.id FROM users u "
+                    "JOIN students s ON u.id=s.user_id "
+                    "WHERE s.department=%s", (dept,)
+                )
+                for r in cursor.fetchall():
+                    cursor.execute(
+                        "INSERT INTO messages "
+                        "(sender_id,receiver_id,subject,body) "
+                        "VALUES (%s,%s,%s,%s)",
+                        (session["user_id"], r["id"], subject, body)
+                    )
+            elif send_to_all == "faculty":
+                cursor.execute(
+                    "SELECT u.id FROM users u "
+                    "JOIN faculty f ON u.id=f.user_id "
+                    "WHERE f.department=%s", (dept,)
+                )
+                for r in cursor.fetchall():
+                    cursor.execute(
+                        "INSERT INTO messages "
+                        "(sender_id,receiver_id,subject,body) "
+                        "VALUES (%s,%s,%s,%s)",
+                        (session["user_id"], r["id"], subject, body)
+                    )
+            else:
+                cursor.execute(
+                    "INSERT INTO messages "
+                    "(sender_id,receiver_id,subject,body) "
+                    "VALUES (%s,%s,%s,%s)",
+                    (session["user_id"], receiver_id, subject, body)
+                )
+            db.commit()
+            log_audit(session["user_id"], "MESSAGE_SENT",
+                      f"HOD sent message: {subject}")
+            flash("Message sent successfully!", "success")
+        except Exception as e:
+            flash(f"Error: {e}", "danger")
+
+    cursor.execute(
+        "SELECT m.*, u.username as sender_name "
+        "FROM messages m JOIN users u ON m.sender_id=u.id "
+        "WHERE m.receiver_id=%s ORDER BY m.created_at DESC",
+        (session["user_id"],)
+    )
+    inbox = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT m.*, u.username as receiver_name "
+        "FROM messages m JOIN users u ON m.receiver_id=u.id "
+        "WHERE m.sender_id=%s ORDER BY m.created_at DESC",
+        (session["user_id"],)
+    )
+    sent = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT u.id, u.username, u.role FROM users u "
+        "JOIN faculty f ON u.id=f.user_id "
+        "WHERE f.department=%s AND u.id!=%s",
+        (dept, session["user_id"])
+    )
+    dept_faculty = cursor.fetchall()
+
+    cursor.execute(
+        "SELECT u.id, u.username, u.role FROM users u "
+        "JOIN students s ON u.id=s.user_id "
+        "WHERE s.department=%s", (dept,)
+    )
+    dept_students = cursor.fetchall()
+
+    cursor.execute(
+        "UPDATE messages SET is_read=1 WHERE receiver_id=%s",
+        (session["user_id"],)
+    )
+    db.commit()
+    db.close()
+
+    return render_template("hod/messages.html",
+        inbox=inbox, sent=sent,
+        dept_faculty=dept_faculty,
+        dept_students=dept_students,
+        dept=dept
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# HOD — LEAVE APPROVAL
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/hod/leaves")
+@login_required
+@role_required("hod", "admin")
+def hod_leaves():
+    dept = get_hod_dept()
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT lr.*, f.full_name, f.designation "
+        "FROM leave_requests lr "
+        "JOIN faculty f ON lr.faculty_id=f.id "
+        "WHERE f.department=%s ORDER BY lr.created_at DESC",
+        (dept,)
+    )
+    leaves = cursor.fetchall()
+    db.close()
+    return render_template("hod/leaves.html", leaves=leaves, dept=dept)
+
+
+@app.route("/hod/leaves/<int:lid>/<action>")
+@login_required
+@role_required("hod", "admin")
+def hod_leave_action(lid, action):
+    if action not in ["approved", "rejected"]:
+        flash("Invalid action.", "danger")
+        return redirect(url_for("hod_leaves"))
+    db = get_db()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE leave_requests SET status=%s WHERE id=%s", (action, lid)
+    )
+    db.commit()
+    db.close()
+    log_audit(session["user_id"], f"LEAVE_{action.upper()}",
+              f"Leave request id={lid} {action}")
+    flash(f"Leave {action} successfully!", "success")
+    return redirect(url_for("hod_leaves"))
+
+
+# ══════════════════════════════════════════════════════════════════
+# FACULTY — DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/faculty")
+@login_required
+@role_required("faculty", "admin")
+def faculty_dashboard():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    cursor.execute(
+        "SELECT f.*, u.username FROM faculty f "
+        "JOIN users u ON f.user_id = u.id "
+        "WHERE f.user_id = %s", (session["user_id"],)
+    )
+    faculty = cursor.fetchone()
+    if faculty:
+        cursor.execute(
+            "SELECT * FROM courses WHERE faculty_id = %s", (faculty["id"],)
+        )
+        courses = cursor.fetchall()
+        cursor.execute(
+            "SELECT * FROM leave_requests WHERE faculty_id = %s "
+            "ORDER BY created_at DESC LIMIT 5",
+            (faculty["id"],)
+        )
+        leaves = cursor.fetchall()
+    else:
+        courses = []
+        leaves  = []
+    db.close()
+    return render_template("faculty/dashboard.html",
+        faculty=faculty, courses=courses, leaves=leaves
+    )
+
+
 # ══════════════════════════════════════════════════════════════════
 # FACULTY — MARKS
 # ══════════════════════════════════════════════════════════════════
@@ -806,8 +1097,7 @@ def faculty_marks():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
-        "SELECT id FROM faculty WHERE user_id = %s",
-        (session["user_id"],)
+        "SELECT id FROM faculty WHERE user_id = %s", (session["user_id"],)
     )
     fac = cursor.fetchone()
     if not fac:
@@ -815,11 +1105,11 @@ def faculty_marks():
         return redirect(url_for("faculty_dashboard"))
 
     if request.method == "POST":
-        student_id  = request.form.get("student_id")
-        course_id   = request.form.get("course_id")
-        marks       = request.form.get("marks_obtained")
-        max_marks   = request.form.get("max_marks", 100)
-        exam_type   = request.form.get("exam_type", "internal")
+        student_id = request.form.get("student_id")
+        course_id  = request.form.get("course_id")
+        marks      = request.form.get("marks_obtained")
+        max_marks  = request.form.get("max_marks", 100)
+        exam_type  = request.form.get("exam_type", "internal")
         try:
             cursor.execute(
                 "SELECT id FROM marks WHERE student_id=%s "
@@ -842,15 +1132,13 @@ def faculty_marks():
                 )
             db.commit()
             log_audit(session["user_id"], "MARKS_ENTRY",
-                      f"Marks entered for student={student_id} "
-                      f"course={course_id}")
+                      f"Marks entered for student={student_id}")
             flash("Marks saved successfully!", "success")
         except Exception as e:
             flash(f"Error: {e}", "danger")
 
     cursor.execute(
-        "SELECT * FROM courses WHERE faculty_id = %s",
-        (fac["id"],)
+        "SELECT * FROM courses WHERE faculty_id = %s", (fac["id"],)
     )
     courses = cursor.fetchall()
 
@@ -858,8 +1146,7 @@ def faculty_marks():
         "SELECT s.id, s.full_name, s.roll_no, s.department "
         "FROM students s JOIN enrollments e ON s.id = e.student_id "
         "JOIN courses c ON e.course_id = c.id "
-        "WHERE c.faculty_id = %s",
-        (fac["id"],)
+        "WHERE c.faculty_id = %s", (fac["id"],)
     )
     students = cursor.fetchall()
 
@@ -888,8 +1175,7 @@ def faculty_attendance():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
-        "SELECT id FROM faculty WHERE user_id = %s",
-        (session["user_id"],)
+        "SELECT id FROM faculty WHERE user_id = %s", (session["user_id"],)
     )
     fac = cursor.fetchone()
     if not fac:
@@ -920,13 +1206,11 @@ def faculty_attendance():
                         "INSERT INTO attendance (student_id, course_id,"
                         " date, status, marked_by) "
                         "VALUES (%s,%s,%s,%s,%s)",
-                        (sid, course_id, date, status,
-                         session["user_id"])
+                        (sid, course_id, date, status, session["user_id"])
                     )
             db.commit()
             log_audit(session["user_id"], "ATTENDANCE_MARKED",
-                      f"Attendance marked for course={course_id} "
-                      f"date={date}")
+                      f"Attendance marked for course={course_id} date={date}")
             flash("Attendance saved successfully!", "success")
         except Exception as e:
             flash(f"Error: {e}", "danger")
@@ -978,8 +1262,7 @@ def faculty_leave():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
-        "SELECT id FROM faculty WHERE user_id = %s",
-        (session["user_id"],)
+        "SELECT id FROM faculty WHERE user_id = %s", (session["user_id"],)
     )
     fac = cursor.fetchone()
     if not fac:
@@ -1006,8 +1289,7 @@ def faculty_leave():
 
     cursor.execute(
         "SELECT * FROM leave_requests WHERE faculty_id = %s "
-        "ORDER BY created_at DESC",
-        (fac["id"],)
+        "ORDER BY created_at DESC", (fac["id"],)
     )
     leaves = cursor.fetchall()
     db.close()
@@ -1025,8 +1307,7 @@ def faculty_timetable():
     db = get_db()
     cursor = db.cursor(dictionary=True)
     cursor.execute(
-        "SELECT f.id, f.department FROM faculty f "
-        "WHERE f.user_id = %s",
+        "SELECT f.id, f.department FROM faculty f WHERE f.user_id = %s",
         (session["user_id"],)
     )
     fac = cursor.fetchone()
@@ -1085,8 +1366,7 @@ def faculty_timetable():
     courses = cursor.fetchall()
     db.close()
 
-    days = ["Monday","Tuesday","Wednesday",
-            "Thursday","Friday","Saturday"]
+    days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
     return render_template("faculty/timetable.html",
         timetable=timetable, courses=courses, days=days
     )
@@ -1154,339 +1434,10 @@ def faculty_messages():
     return render_template("faculty/messages.html",
         inbox=inbox, sent=sent, users=users
     )
-# ══════════════════════════════════════════════════════════════════
-# HOD — HELPER: GET HOD DEPT
-# ══════════════════════════════════════════════════════════════════
-
-def get_hod_dept():
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT department FROM faculty WHERE user_id = %s",
-        (session["user_id"],)
-    )
-    hod = cursor.fetchone()
-    db.close()
-    return hod["department"] if hod else None
 
 
 # ══════════════════════════════════════════════════════════════════
-# HOD — FACULTY
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/faculty")
-@login_required
-@role_required("hod", "admin")
-def hod_faculty():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT f.*, u.username, "
-        "(SELECT COUNT(*) FROM courses c WHERE c.faculty_id=f.id) "
-        "as course_count, "
-        "(SELECT COUNT(*) FROM leave_requests lr "
-        "WHERE lr.faculty_id=f.id AND lr.status='pending') "
-        "as pending_leaves "
-        "FROM faculty f JOIN users u ON f.user_id=u.id "
-        "WHERE f.department=%s ORDER BY f.designation",
-        (dept,)
-    )
-    faculty = cursor.fetchall()
-    db.close()
-    return render_template("hod/faculty.html",
-                           faculty=faculty, dept=dept)
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOD — STUDENTS
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/students")
-@login_required
-@role_required("hod", "admin")
-def hod_students():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    semester = request.args.get("semester", "")
-    if semester:
-        cursor.execute(
-            "SELECT s.*, u.username FROM students s "
-            "JOIN users u ON s.user_id=u.id "
-            "WHERE s.department=%s AND s.semester=%s "
-            "ORDER BY s.roll_no",
-            (dept, semester)
-        )
-    else:
-        cursor.execute(
-            "SELECT s.*, u.username FROM students s "
-            "JOIN users u ON s.user_id=u.id "
-            "WHERE s.department=%s ORDER BY s.semester, s.roll_no",
-            (dept,)
-        )
-    students = cursor.fetchall()
-    db.close()
-    return render_template("hod/students.html",
-        students=students, dept=dept, semester=semester
-    )
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOD — TIMETABLE
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/timetable")
-@login_required
-@role_required("hod", "admin")
-def hod_timetable():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT t.*, c.name as course_name, c.code, "
-        "f.full_name as faculty_name "
-        "FROM timetable t "
-        "LEFT JOIN courses c ON t.course_id=c.id "
-        "LEFT JOIN faculty f ON t.faculty_id=f.id "
-        "WHERE t.department=%s "
-        "ORDER BY FIELD(t.day,'Monday','Tuesday','Wednesday',"
-        "'Thursday','Friday','Saturday'), t.period",
-        (dept,)
-    )
-    timetable = cursor.fetchall()
-    db.close()
-    days = ["Monday","Tuesday","Wednesday",
-            "Thursday","Friday","Saturday"]
-    periods = list(range(1, 9))
-    return render_template("hod/timetable.html",
-        timetable=timetable, dept=dept,
-        days=days, periods=periods
-    )
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOD — EVENTS
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/events")
-@login_required
-@role_required("hod", "admin")
-def hod_events():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT * FROM events WHERE department=%s OR department='ALL' "
-        "ORDER BY event_date DESC",
-        (dept,)
-    )
-    events = cursor.fetchall()
-    db.close()
-    return render_template("hod/events.html",
-                           events=events, dept=dept)
-
-
-@app.route("/hod/events/add", methods=["GET", "POST"])
-@login_required
-@role_required("hod", "admin")
-def hod_add_event():
-    dept = get_hod_dept()
-    if request.method == "POST":
-        title       = request.form.get("title").strip()
-        description = request.form.get("description").strip()
-        event_date  = request.form.get("event_date")
-        department  = request.form.get("department", dept)
-        try:
-            db = get_db()
-            cursor = db.cursor()
-            cursor.execute(
-                "INSERT INTO events "
-                "(title, description, event_date, "
-                "department, created_by) "
-                "VALUES (%s,%s,%s,%s,%s)",
-                (title, description, event_date,
-                 department, session["user_id"])
-            )
-            db.commit()
-            db.close()
-            log_audit(session["user_id"], "EVENT_ADD",
-                      f"Event added: {title}")
-            flash(f"Event '{title}' added!", "success")
-            return redirect(url_for("hod_events"))
-        except Exception as e:
-            flash(f"Error: {e}", "danger")
-    return render_template("hod/add_event.html", dept=dept)
-
-
-@app.route("/hod/events/delete/<int:eid>")
-@login_required
-@role_required("hod", "admin")
-def hod_delete_event(eid):
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute("DELETE FROM events WHERE id=%s", (eid,))
-    db.commit()
-    db.close()
-    flash("Event deleted!", "success")
-    return redirect(url_for("hod_events"))
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOD — MESSAGES
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/messages", methods=["GET", "POST"])
-@login_required
-@role_required("hod", "admin")
-def hod_messages():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-
-    if request.method == "POST":
-        receiver_id  = request.form.get("receiver_id")
-        subject      = request.form.get("subject")
-        body         = request.form.get("body")
-        send_to_all  = request.form.get("send_to_all")
-        try:
-            if send_to_all == "students":
-                cursor.execute(
-                    "SELECT u.id FROM users u "
-                    "JOIN students s ON u.id=s.user_id "
-                    "WHERE s.department=%s", (dept,)
-                )
-                receivers = cursor.fetchall()
-                for r in receivers:
-                    cursor.execute(
-                        "INSERT INTO messages "
-                        "(sender_id,receiver_id,subject,body) "
-                        "VALUES (%s,%s,%s,%s)",
-                        (session["user_id"], r["id"], subject, body)
-                    )
-            elif send_to_all == "faculty":
-                cursor.execute(
-                    "SELECT u.id FROM users u "
-                    "JOIN faculty f ON u.id=f.user_id "
-                    "WHERE f.department=%s", (dept,)
-                )
-                receivers = cursor.fetchall()
-                for r in receivers:
-                    cursor.execute(
-                        "INSERT INTO messages "
-                        "(sender_id,receiver_id,subject,body) "
-                        "VALUES (%s,%s,%s,%s)",
-                        (session["user_id"], r["id"], subject, body)
-                    )
-            else:
-                cursor.execute(
-                    "INSERT INTO messages "
-                    "(sender_id,receiver_id,subject,body) "
-                    "VALUES (%s,%s,%s,%s)",
-                    (session["user_id"], receiver_id, subject, body)
-                )
-            db.commit()
-            log_audit(session["user_id"], "MESSAGE_SENT",
-                      f"HOD sent message: {subject}")
-            flash("Message sent successfully!", "success")
-        except Exception as e:
-            flash(f"Error: {e}", "danger")
-
-    # Inbox
-    cursor.execute(
-        "SELECT m.*, u.username as sender_name "
-        "FROM messages m JOIN users u ON m.sender_id=u.id "
-        "WHERE m.receiver_id=%s ORDER BY m.created_at DESC",
-        (session["user_id"],)
-    )
-    inbox = cursor.fetchall()
-
-    # Sent
-    cursor.execute(
-        "SELECT m.*, u.username as receiver_name "
-        "FROM messages m JOIN users u ON m.receiver_id=u.id "
-        "WHERE m.sender_id=%s ORDER BY m.created_at DESC",
-        (session["user_id"],)
-    )
-    sent = cursor.fetchall()
-
-    # Dept users for sending
-    cursor.execute(
-        "SELECT u.id, u.username, u.role FROM users u "
-        "JOIN faculty f ON u.id=f.user_id "
-        "WHERE f.department=%s AND u.id!=%s",
-        (dept, session["user_id"])
-    )
-    dept_faculty = cursor.fetchall()
-
-    cursor.execute(
-        "SELECT u.id, u.username, u.role FROM users u "
-        "JOIN students s ON u.id=s.user_id "
-        "WHERE s.department=%s",
-        (dept,)
-    )
-    dept_students = cursor.fetchall()
-
-    cursor.execute(
-        "UPDATE messages SET is_read=1 WHERE receiver_id=%s",
-        (session["user_id"],)
-    )
-    db.commit()
-    db.close()
-
-    return render_template("hod/messages.html",
-        inbox=inbox, sent=sent,
-        dept_faculty=dept_faculty,
-        dept_students=dept_students,
-        dept=dept
-    )
-
-
-# ══════════════════════════════════════════════════════════════════
-# HOD — LEAVE APPROVAL
-# ══════════════════════════════════════════════════════════════════
-
-@app.route("/hod/leaves")
-@login_required
-@role_required("hod", "admin")
-def hod_leaves():
-    dept = get_hod_dept()
-    db = get_db()
-    cursor = db.cursor(dictionary=True)
-    cursor.execute(
-        "SELECT lr.*, f.full_name, f.designation "
-        "FROM leave_requests lr "
-        "JOIN faculty f ON lr.faculty_id=f.id "
-        "WHERE f.department=%s ORDER BY lr.created_at DESC",
-        (dept,)
-    )
-    leaves = cursor.fetchall()
-    db.close()
-    return render_template("hod/leaves.html",
-                           leaves=leaves, dept=dept)
-
-
-@app.route("/hod/leaves/<int:lid>/<action>")
-@login_required
-@role_required("hod", "admin")
-def hod_leave_action(lid, action):
-    if action not in ["approved", "rejected"]:
-        flash("Invalid action.", "danger")
-        return redirect(url_for("hod_leaves"))
-    db = get_db()
-    cursor = db.cursor()
-    cursor.execute(
-        "UPDATE leave_requests SET status=%s WHERE id=%s",
-        (action, lid)
-    )
-    db.commit()
-    db.close()
-    log_audit(session["user_id"], f"LEAVE_{action.upper()}",
-              f"Leave request id={lid} {action}")
-    flash(f"Leave {action} successfully!", "success")
-    return redirect(url_for("hod_leaves"))
-# ══════════════════════════════════════════════════════════════════
-# STUDENT — HELPER: GET STUDENT PROFILE
+# STUDENT — HELPER
 # ══════════════════════════════════════════════════════════════════
 
 def get_student_profile():
@@ -1501,7 +1452,11 @@ def get_student_profile():
     return student
 
 
-@app.route("/student/dashboard")
+# ══════════════════════════════════════════════════════════════════
+# STUDENT — DASHBOARD
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/student")
 @login_required
 @role_required("student", "admin")
 def student_dashboard():
@@ -1513,7 +1468,6 @@ def student_dashboard():
     db = get_db()
     cursor = db.cursor(dictionary=True)
 
-    # Attendance
     cursor.execute(
         "SELECT COUNT(*) as total, SUM(status='present') as present "
         "FROM attendance WHERE student_id=%s",
@@ -1522,7 +1476,6 @@ def student_dashboard():
     att = cursor.fetchone()
     att_pct = round((att["present"] / att["total"]) * 100) if att["total"] else 0
 
-    # Fee due
     cursor.execute(
         "SELECT COALESCE(SUM(amount - paid), 0) as due "
         "FROM fees WHERE student_id=%s",
@@ -1530,7 +1483,6 @@ def student_dashboard():
     )
     fee_due = cursor.fetchone()["due"] or 0
 
-    # Open queries
     cursor.execute(
         "SELECT COUNT(*) as cnt FROM queries "
         "WHERE student_id=%s AND status='open'",
@@ -1538,7 +1490,6 @@ def student_dashboard():
     )
     open_queries = cursor.fetchone()["cnt"]
 
-    # Unread messages
     cursor.execute(
         "SELECT COUNT(*) as cnt FROM messages "
         "WHERE receiver_id=%s AND is_read=0",
@@ -1547,7 +1498,6 @@ def student_dashboard():
     unread = cursor.fetchone()["cnt"]
 
     db.close()
-
     return render_template("student/dashboard.html",
         student=student,
         att_pct=att_pct,
@@ -1555,7 +1505,6 @@ def student_dashboard():
         open_queries=open_queries,
         unread=unread
     )
-
 
 
 # ══════════════════════════════════════════════════════════════════
@@ -1584,12 +1533,8 @@ def student_marks():
     for m in marks:
         cname = m["course_name"]
         if cname not in summary:
-            summary[cname] = {
-                "code": m["code"],
-                "exams": [],
-                "total": 0,
-                "max": 0
-            }
+            summary[cname] = {"code": m["code"], "exams": [],
+                               "total": 0, "max": 0}
         summary[cname]["exams"].append(m)
         summary[cname]["total"] += float(m["marks_obtained"])
         summary[cname]["max"]   += float(m["max_marks"])
@@ -1626,11 +1571,7 @@ def student_attendance():
     for r in records:
         cname = r["course_name"]
         if cname not in course_stats:
-            course_stats[cname] = {
-                "code":    r["code"],
-                "total":   0,
-                "present": 0
-            }
+            course_stats[cname] = {"code": r["code"], "total": 0, "present": 0}
         course_stats[cname]["total"] += 1
         if r["status"] == "present":
             course_stats[cname]["present"] += 1
@@ -1644,9 +1585,7 @@ def student_attendance():
 
     db.close()
     return render_template("student/attendance.html",
-        student=student,
-        records=records,
-        course_stats=course_stats
+        student=student, records=records, course_stats=course_stats
     )
 
 
@@ -1676,8 +1615,7 @@ def student_fees():
 
     db.close()
     return render_template("student/fees.html",
-        student=student,
-        fees=fees,
+        student=student, fees=fees,
         total_amount=total_amount,
         total_paid=total_paid,
         total_due=total_due
@@ -1796,10 +1734,163 @@ def student_messages():
     db.close()
 
     return render_template("student/messages.html",
-        inbox=inbox, sent=sent, faculty=faculty,
-        student=student
+        inbox=inbox, sent=sent, faculty=faculty, student=student
+    )
+# ══════════════════════════════════════════════════════════════════
+# PRINCIPAL — STUDENTS
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/principal/students")
+@login_required
+@role_required("principal", "admin")
+def principal_students():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    dept   = request.args.get("dept", "")
+    sem    = request.args.get("semester", "")
+
+    query  = ("SELECT s.*, u.username FROM students s "
+              "JOIN users u ON s.user_id=u.id WHERE 1=1 ")
+    params = []
+
+    if dept:
+        query += "AND s.department=%s "
+        params.append(dept)
+    if sem:
+        query += "AND s.semester=%s "
+        params.append(sem)
+
+    query += "ORDER BY s.department, s.semester, s.roll_no"
+    cursor.execute(query, params)
+    students = cursor.fetchall()
+
+    # Dept wise count
+    cursor.execute(
+        "SELECT department, COUNT(*) as count "
+        "FROM students GROUP BY department ORDER BY department"
+    )
+    dept_counts = cursor.fetchall()
+    db.close()
+
+    DEPTS = ["AIML","AIDS","CYBERSECURITY","CSE",
+             "ISE","CIVIL","MECHANICAL","ECE"]
+    return render_template("principal/students.html",
+        students=students,
+        dept_counts=dept_counts,
+        selected_dept=dept,
+        selected_sem=sem,
+        depts=DEPTS
     )
 
-# ── Run ────────────────────────────────────────────────────────────────────────
+
+# ══════════════════════════════════════════════════════════════════
+# PRINCIPAL — FACULTY
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/principal/faculty")
+@login_required
+@role_required("principal", "admin")
+def principal_faculty():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    dept = request.args.get("dept", "")
+
+    if dept:
+        cursor.execute(
+            "SELECT f.*, u.username, "
+            "COUNT(DISTINCT c.id) as course_count "
+            "FROM faculty f "
+            "JOIN users u ON f.user_id=u.id "
+            "LEFT JOIN courses c ON f.id=c.faculty_id "
+            "WHERE f.department=%s "
+            "GROUP BY f.id ORDER BY f.designation",
+            (dept,)
+        )
+    else:
+        cursor.execute(
+            "SELECT f.*, u.username, "
+            "COUNT(DISTINCT c.id) as course_count "
+            "FROM faculty f "
+            "JOIN users u ON f.user_id=u.id "
+            "LEFT JOIN courses c ON f.id=c.faculty_id "
+            "GROUP BY f.id ORDER BY f.department, f.designation"
+        )
+    faculty = cursor.fetchall()
+
+    # Dept wise faculty count
+    cursor.execute(
+        "SELECT department, COUNT(*) as count "
+        "FROM faculty GROUP BY department ORDER BY department"
+    )
+    dept_counts = cursor.fetchall()
+
+    # Faculty with their courses
+    cursor.execute(
+        "SELECT f.full_name, f.department, "
+        "GROUP_CONCAT(c.name SEPARATOR ', ') as courses "
+        "FROM faculty f "
+        "LEFT JOIN courses c ON f.id=c.faculty_id "
+        "GROUP BY f.id ORDER BY f.department"
+    )
+    faculty_courses = cursor.fetchall()
+    db.close()
+
+    DEPTS = ["AIML","AIDS","CYBERSECURITY","CSE",
+             "ISE","CIVIL","MECHANICAL","ECE"]
+    return render_template("principal/faculty.html",
+        faculty=faculty,
+        dept_counts=dept_counts,
+        faculty_courses=faculty_courses,
+        selected_dept=dept,
+        depts=DEPTS
+    )
+
+
+# ══════════════════════════════════════════════════════════════════
+# PRINCIPAL — LEAVES
+# ══════════════════════════════════════════════════════════════════
+
+@app.route("/principal/leaves")
+@login_required
+@role_required("principal", "admin")
+def principal_leaves():
+    db = get_db()
+    cursor = db.cursor(dictionary=True)
+    status = request.args.get("status", "")
+
+    if status:
+        cursor.execute(
+            "SELECT lr.*, f.full_name, f.department, "
+            "f.designation FROM leave_requests lr "
+            "JOIN faculty f ON lr.faculty_id=f.id "
+            "WHERE lr.status=%s "
+            "ORDER BY lr.created_at DESC",
+            (status,)
+        )
+    else:
+        cursor.execute(
+            "SELECT lr.*, f.full_name, f.department, "
+            "f.designation FROM leave_requests lr "
+            "JOIN faculty f ON lr.faculty_id=f.id "
+            "ORDER BY lr.created_at DESC"
+        )
+    leaves = cursor.fetchall()
+
+    # Counts
+    cursor.execute(
+        "SELECT status, COUNT(*) as count "
+        "FROM leave_requests GROUP BY status"
+    )
+    counts = {r["status"]: r["count"]
+              for r in cursor.fetchall()}
+    db.close()
+    return render_template("principal/leaves.html",
+        leaves=leaves,
+        counts=counts,
+        selected_status=status
+    )
+
+
+# ── Run ─────────────────────────────────────────────────────────
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
